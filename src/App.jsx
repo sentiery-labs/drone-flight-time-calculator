@@ -7,13 +7,13 @@ import {
   Activity,
   BarChart3,
   BatteryCharging,
+  Camera,
   Check,
-  ChevronDown,
-  CircleAlert,
   Cpu,
   ExternalLink,
   Info,
   LineChart,
+  PencilRuler,
   Plane,
   Plus,
   RotateCcw,
@@ -21,11 +21,13 @@ import {
   SlidersHorizontal,
   Sun,
   Target,
-  TriangleAlert,
   X,
   Zap
 } from "lucide-react";
 import { getComboLabel, interpolateByThrust, loadMotorPresetCsv } from "./data/motorData";
+import { BigNum, InputRow, LEVEL_META, Sec, SmallCard, STATUS } from "./components/ui";
+import { FIXED_WING_BATTERY_PRESETS } from "./fixedwing/aero";
+import FixedWingAeroPanel from "./fixedwing/FixedWingAeroPanel";
 import sentieryIcon from "../sentiery-icon.png";
 import sentieryLogoEn from "../sentiery-logo-en.png";
 import sentieryMark from "../sentiery-mark.png";
@@ -47,19 +49,34 @@ const INIT_ESC = { kg: 0.021, continuousA: 20, maxA: 30, cellMin: 3, cellMax: 4 
 const INIT_SOLAR = { on: false, kg: 0.5, watts: 0, weatherPct: 70 };
 const INIT_DIRECT_MOTOR = { cells: 4, thrustN50: 0, powerW50: 0 };
 const LOG_STORAGE_KEY = "drone-flight-test-logs-v1";
+const FW_LOG_CAL_KEY = "fw-log-cal-v1";
 
-const STATUS = {
-  danger: { color: "#dc2626", bg: "#fef2f2", soft: "#fee2e2", Icon: TriangleAlert },
-  warning: { color: "#b45309", bg: "#fffbeb", soft: "#fef3c7", Icon: CircleAlert },
-  ok: { color: "#047857", bg: "#ecfdf5", soft: "#d1fae5", Icon: Check },
-  info: { color: "#2563eb", bg: "#eff6ff", soft: "#dbeafe", Icon: Info }
+const INIT_FW_AERO = {
+  wingspanMm: 1620,
+  wingAreaM2: 0.36,
+  towKg: 2.2,
+  airframeStyleId: "sport",
+  propStyleId: "fixed",
+  cd0: 0.04,
+  oswald: 0.75,
+  propEff: 0.55,
+  clMax: 1.2,
+  avionicsW: 8,
+  reservePct: 15,
+  batteryId: "4s-10000-liion",
+  customBattery: { cells: 4, mah: 10000, kg: 0.7, cRate: 10 }
 };
 
-const LEVEL_META = {
-  danger: STATUS.danger,
-  warning: STATUS.warning,
-  ok: STATUS.ok,
-  info: STATUS.info
+const FW_SUB_MODES = [
+  { id: "preset", label: "프리셋", desc: "기체 선택", Icon: Plane },
+  { id: "photo", label: "사진 측정", desc: "Top view 촬영", Icon: Camera },
+  { id: "custom", label: "커스텀", desc: "제원 직접 입력", Icon: PencilRuler }
+];
+
+const FW_SUB_MODE_TEXT = {
+  preset: "기체 프리셋과 추진계, 프로펠러, 배터리를 선택하면 권장 순항속도와 예상 항속시간을 1차 추정합니다.",
+  photo: "실측 윙스팬과 Top view 사진으로 주익 면적을 재고, 항력 모델로 순항전력과 비행시간을 추정합니다.",
+  custom: "윙스팬 · 주익 면적 · 무게를 직접 입력해 표준 항력 모델(CD0 + 유도항력)로 비행시간을 계산합니다."
 };
 
 const TIME_COLORS = {
@@ -85,17 +102,17 @@ const VEHICLE_MODE_META = {
     title: "고정익 비행시간 추정기",
     subtitle: "윙스팬 기반 면적 추정 · 항력 · 순항전력",
     Icon: Plane,
-    focus: "사진 기반 주익 면적 추정부터 함께 설계할 예정입니다.",
+    focus: "프리셋 · 사진 측정 · 커스텀 세 가지 방식으로 계산할 수 있습니다.",
     items: [
       "Top view 사진 + 실제 윙스팬으로 주익 면적 계산",
       "수동 외곽선 지정 후 평균 시위와 aspect ratio 추정",
       "CD0, Oswald 효율, 추진 효율을 이용한 속도별 필요전력 곡선",
-      "실측 비행 로그로 항력계수와 순항전력 보정"
+      "실측 비행 로그로 항력계수와 순항전력 보정 (예정)"
     ],
     notes: [
-      ["1단계", "수동 입력 계산기"],
-      ["2단계", "사진 기반 날개 면적 추정"],
-      ["3단계", "실측 로그 보정"]
+      ["프리셋", "제조사 제원 기반 1차 추정"],
+      ["사진 측정", "Top view 면적 → 항력 모델"],
+      ["커스텀", "제원 직접 입력 계산"]
     ]
   },
   vtol: {
@@ -240,15 +257,6 @@ const FIXED_WING_POWERTRAINS = [
       { id: "stallion-f90-7x6", label: "7x6", diameterIn: 7, pitchIn: 6, powerFactor: 1.02, speedBiasKmh: 2 }
     ]
   }
-];
-
-const FIXED_WING_BATTERY_PRESETS = [
-  { id: "3s-10000-liion", label: "3S 10000mAh Li-Ion", cells: 3, mah: 10000, kg: 0.52, cRate: 10 },
-  { id: "4s-6000-lipo", label: "4S 6000mAh LiPo", cells: 4, mah: 6000, kg: 0.58, cRate: 25 },
-  { id: "4s-10000-liion", label: "4S 10000mAh Li-Ion", cells: 4, mah: 10000, kg: 0.68, cRate: 10 },
-  { id: "4s-21000-liion", label: "4S6P 21000mAh Li-Ion", cells: 4, mah: 21000, kg: 1.08, cRate: 8 },
-  { id: "6s-8000-liion", label: "6S 8000mAh Li-Ion", cells: 6, mah: 8000, kg: 0.88, cRate: 10 },
-  { id: "custom", label: "직접 입력", cells: 4, mah: 10000, kg: 0.7, cRate: 10 }
 ];
 
 const FIXED_WING_DEFAULTS = {
@@ -412,57 +420,6 @@ function calcFixedWing(preset, powertrain, prop, battery, config) {
 
 /* ── tiny reusable pieces ── */
 
-const InputRow = ({ label, unit, value, onChange, min = 0, max = 99999, step = 0.01, width }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-    <span style={{ fontSize: 12, color: "#475569", width: width || 110, flexShrink: 0 }}>{label}</span>
-    <input type="number" value={value} min={min} max={max} step={step}
-      onChange={e => onChange(+e.target.value)}
-      style={{ width: 72, padding: "4px 6px", border: "1px solid #cbd5e1", borderRadius: 6,
-        fontSize: 13, textAlign: "right", outline: "none", background: "#f8fafc" }} />
-    {unit && <span style={{ fontSize: 11, color: "#94a3b8", width: 40 }}>{unit}</span>}
-  </div>
-);
-
-const Sec = ({ title, icon: Icon, children, open: initOpen = true }) => {
-  const [open, setOpen] = useState(initOpen);
-  return (
-    <div className="section-card" style={{ marginBottom: 6, background: "white", borderRadius: 10, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-      <button onClick={() => setOpen(!open)}
-        style={{ width: "100%", padding: "7px 12px", display: "flex", alignItems: "center", gap: 6,
-          background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
-        {Icon && <Icon size={15} strokeWidth={2.2} color="#2563eb" style={{ flexShrink: 0 }} />}
-        <span style={{ flex: 1, textAlign: "left" }}>{title}</span>
-        <ChevronDown size={14} color="#94a3b8" style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "0.2s" }} />
-      </button>
-      {open && <div style={{ padding: "2px 12px 10px" }}>{children}</div>}
-    </div>
-  );
-};
-
-const BigNum = ({ label, value, unit, sub, color, border, featured = false }) => (
-  <div className={`big-num${featured ? " big-num-featured" : ""}`}
-    style={{ background: border ? `linear-gradient(135deg,${color}14,${color}06)` : "white",
-    borderRadius: 12, padding: featured ? "16px 18px" : "12px 16px", border: border ? `2px solid ${color}35` : "1px solid #e2e8f0",
-    boxShadow: featured ? `0 14px 30px ${color}18` : undefined,
-    flex: featured ? 1.25 : 1, minWidth: 0, textAlign: "center" }}>
-    <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>{label}</div>
-    <div style={{ fontSize: featured ? 44 : 36, fontWeight: 800, color: color || "#0f172a", lineHeight: 1.1,
-      fontVariantNumeric: "tabular-nums" }}>{value}</div>
-    <div style={{ fontSize: 13, color: color || "#64748b", fontWeight: 500 }}>{unit}</div>
-    {sub && <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
-  </div>
-);
-
-const SmallCard = ({ label, value, unit, className = "" }) => (
-  <div className={`small-card${className ? ` ${className}` : ""}`}
-    style={{ background: "white", borderRadius: 8, padding: "8px 12px", border: "1px solid #e2e8f0", flex: 1, minWidth: 0 }}>
-    <div style={{ fontSize: 10, color: "#94a3b8" }}>{label}</div>
-    <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
-      {typeof value === "number" ? value.toFixed(1) : value}<span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 3 }}>{unit}</span>
-    </div>
-  </div>
-);
-
 const CurveTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -598,7 +555,16 @@ const FixedWingPanel = ({
   onPropChange,
   onBatteryChange,
   onConfigChange,
-  onCustomBatteryChange
+  onCustomBatteryChange,
+  fwMode,
+  onFwModeChange,
+  aero,
+  onAeroChange,
+  onAeroBatteryChange,
+  photo,
+  onPhotoApply,
+  logCal,
+  onLogCalChange
 }) => {
   const ModeIcon = mode.Icon || Plane;
   const auwMeta = LEVEL_META[fixedWingCalc.auwStatus] || LEVEL_META.info;
@@ -620,10 +586,38 @@ const FixedWingPanel = ({
         <div>
           <div className="coming-soon-kicker">베타 계산</div>
           <h2>{mode.title}</h2>
-          <p>기체 프리셋과 추진계, 프로펠러, 배터리를 선택하면 권장 순항속도와 예상 항속시간을 1차 추정합니다.</p>
+          <p>{FW_SUB_MODE_TEXT[fwMode] || FW_SUB_MODE_TEXT.preset}</p>
         </div>
       </section>
 
+      <div className="fixedwing-mode-tabs" role="tablist" aria-label="고정익 계산 방식">
+        {FW_SUB_MODES.map(sub => {
+          const SubIcon = sub.Icon;
+          const active = fwMode === sub.id;
+          return (
+            <button key={sub.id} type="button" role="tab" aria-selected={active}
+              className={`fw-mode-tab${active ? " fw-mode-tab-active" : ""}`}
+              onClick={() => onFwModeChange(sub.id)}>
+              <SubIcon size={15} strokeWidth={2.3} />
+              <span>{sub.label}</span>
+              <small>{sub.desc}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      {fwMode !== "preset" ? (
+        <FixedWingAeroPanel
+          variant={fwMode}
+          aero={aero}
+          onAeroChange={onAeroChange}
+          onAeroBatteryChange={onAeroBatteryChange}
+          photo={photo}
+          onPhotoApply={onPhotoApply}
+          logCal={logCal}
+          onLogCalChange={onLogCalChange}
+        />
+      ) : (
       <div className="app-layout fixedwing-layout">
         <div className="inputs-panel fixedwing-inputs-panel" style={{ width: 280, flexShrink: 0 }}>
           <Sec title="기체 프리셋" icon={Plane}>
@@ -829,6 +823,7 @@ const FixedWingPanel = ({
           </div>
         </div>
       </div>
+      )}
       {setupTipOpen && (
         <div className="setup-tip-backdrop" role="dialog" aria-modal="true" aria-labelledby="fixedwing-setup-tip-title">
           <div className="setup-tip-modal">
@@ -855,24 +850,44 @@ const FixedWingPanel = ({
                   ].map(([state, title, subtitle, detail, angle, color]) => (
                     <div className={`cg-balance-card cg-balance-${state}`} key={state}>
                       <svg viewBox="0 0 340 152" role="img" aria-label={`${title} 무게중심 확인 그림`}>
-                        <g transform={`rotate(${angle} 170 72)`}>
-                          <path d="M36 66 L195 66 L300 78 L195 90 L36 90 C19 85 19 71 36 66Z" fill="#ffffff" stroke="#334155" strokeWidth="2.2" />
-                          <path d="M104 55 C139 36 207 38 253 62 C191 72 137 72 94 64Z" fill="#ef4444" stroke="#991b1b" strokeWidth="1.4" />
-                          <path d="M205 66 L315 43 L328 53 L227 78 Z" fill="#f8fafc" stroke="#334155" strokeWidth="1.7" />
-                          <path d="M205 90 L315 113 L328 103 L227 78 Z" fill="#f8fafc" stroke="#334155" strokeWidth="1.7" />
-                          <circle cx="38" cy="78" r="7" fill="#0f172a" />
-                          <rect x="78" y="74" width="44" height="10" rx="3" fill="#f59e0b" />
-                          <line x1="144" y1="51" x2="196" y2="51" stroke="#64748b" strokeWidth="1.6" />
-                          <line x1="144" y1="45" x2="144" y2="58" stroke="#64748b" strokeWidth="1.6" />
-                          <line x1="196" y1="45" x2="196" y2="58" stroke="#64748b" strokeWidth="1.6" />
-                          <text x="170" y="43" textAnchor="middle" fontSize="10" fontWeight="800" fill="#475569">C.G. Range</text>
-                          <line x1="138" y1="103" x2="216" y2="103" stroke={color} strokeWidth="5" strokeLinecap="round" />
+                        {/* 수평 기준선 */}
+                        <line x1="22" y1="76" x2="318" y2="76" stroke="#cbd5e1" strokeWidth="1.2" strokeDasharray="5 5" />
+                        <g transform={`rotate(${angle} 170 76)`}>
+                          {/* 프로펠러 + 스피너 */}
+                          <ellipse cx="41" cy="76" rx="3.2" ry="19" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.1" />
+                          <path d="M53 69 Q43 72 43 76 Q43 80 53 83 Z" fill="#475569" />
+                          {/* 동체 포드 */}
+                          <path d="M53 66 Q72 56 100 55 L154 55 Q188 57 205 68 L205 84 Q188 93 154 94 L100 94 Q72 93 53 86 Q46 76 53 66 Z"
+                            fill="#ffffff" stroke="#334155" strokeWidth="2" />
+                          {/* 조종석 창 */}
+                          <ellipse cx="88" cy="66" rx="13" ry="6.5" fill="#bae6fd" stroke="#0284c7" strokeWidth="1.2" />
+                          {/* 배터리 */}
+                          <rect x="86" y="72" width="40" height="12" rx="3" fill="#f59e0b" stroke="#b45309" strokeWidth="1" />
+                          {/* 테일붐 */}
+                          <path d="M203 71 L286 73.5 L286 78.5 L203 83 Z" fill="#ffffff" stroke="#334155" strokeWidth="1.7" />
+                          {/* 수직미익 */}
+                          <path d="M271 73 L284 47 Q286 43 290 44 L297 46 L288 74 Z" fill="#f1f5f9" stroke="#334155" strokeWidth="1.6" />
+                          {/* 수평미익 */}
+                          <rect x="268" y="70" width="54" height="6" rx="3" fill="#f1f5f9" stroke="#334155" strokeWidth="1.6" />
+                          {/* 주익 (측면 시위) */}
+                          <rect x="114" y="45" width="98" height="11" rx="5.5" fill="#7dd3fc" stroke="#0369a1" strokeWidth="1.6" />
+                          {/* CG 허용 범위 */}
+                          <line x1="150" y1="34" x2="192" y2="34" stroke="#64748b" strokeWidth="1.6" />
+                          <line x1="150" y1="29" x2="150" y2="39" stroke="#64748b" strokeWidth="1.6" />
+                          <line x1="192" y1="29" x2="192" y2="39" stroke="#64748b" strokeWidth="1.6" />
+                          <text x="171" y="25" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#64748b">C.G. RANGE</text>
+                          {/* CG 마커 */}
+                          <circle cx="170" cy="50" r="4.5" fill="#0f766e" stroke="#ffffff" strokeWidth="1.5" />
                         </g>
-                        <path d="M154 98 C154 89 162 84 170 84 C178 84 186 89 186 98 L186 143 L154 143 Z" fill="#ffd6bf" stroke="#eab08d" strokeWidth="1.5" />
-                        <path d="M155 142 L187 142" stroke="#eab08d" strokeWidth="2" />
-                        <line x1="170" y1="52" x2="170" y2="124" stroke="#0f766e" strokeWidth="2" strokeDasharray="4 4" />
-                        <rect x="128" y="18" width="84" height="25" rx="13" fill={`${color}18`} stroke={color} />
-                        <text x="170" y="35" textAnchor="middle" fontSize="13" fontWeight="900" fill={color}>{title}</text>
+                        {/* CG 기준 수직선 (받침 위치) */}
+                        <line x1="170" y1="40" x2="170" y2="92" stroke="#0f766e" strokeWidth="1.8" strokeDasharray="4 4" />
+                        {/* 받치는 손가락 */}
+                        <path d="M158 104 C158 96 163 92 170 92 C177 92 182 96 182 104 L182 152 L158 152 Z"
+                          fill="#fcd9c4" stroke="#e2a883" strokeWidth="1.5" />
+                        <path d="M162 101 Q170 96 178 101" stroke="#e2a883" strokeWidth="1.2" fill="none" />
+                        {/* 상태 라벨 */}
+                        <rect x="10" y="10" width="104" height="24" rx="12" fill={`${color}14`} stroke={color} />
+                        <text x="62" y="26" textAnchor="middle" fontSize="12" fontWeight="800" fill={color}>{title}</text>
                       </svg>
                       <strong>{subtitle}</strong>
                       <span>{detail}</span>
@@ -893,21 +908,38 @@ const FixedWingPanel = ({
                   </div>
                   <div className="balance-diagram">
                     <svg viewBox="0 0 360 160" role="img" aria-label="배터리 위치와 무게중심 조정 개념도">
-                      <path d="M40 72 L230 72 L312 86 L230 100 L40 100 C24 94 24 78 40 72Z" fill="#eef2ff" stroke="#475569" strokeWidth="2" />
-                      <rect x="72" y="79" width="68" height="16" rx="4" fill="#f59e0b" />
-                      <text x="106" y="68" textAnchor="middle" fontSize="11" fontWeight="800" fill="#b45309">배터리</text>
-                      <line x1="155" y1="50" x2="155" y2="124" stroke="#0f766e" strokeWidth="2" />
-                      <circle cx="155" cy="86" r="12" fill="#0f766e" />
-                      <text x="155" y="90" textAnchor="middle" fontSize="10" fontWeight="800" fill="#fff">CG</text>
-                      <path d="M85 124 L50 144 L120 144 Z" fill="#cbd5e1" />
-                      <path d="M155 124 L120 144 L190 144 Z" fill="#0f766e" opacity="0.75" />
-                      <path d="M250 124 L215 144 L285 144 Z" fill="#cbd5e1" />
-                      <path d="M88 112 L122 112" stroke="#b45309" strokeWidth="2.5" markerEnd="url(#arrowTip)" />
                       <defs>
-                        <marker id="arrowTip" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <marker id="arrowTip" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
                           <path d="M0 0 L8 4 L0 8 Z" fill="#b45309" />
                         </marker>
                       </defs>
+                      <g transform="translate(12 -6)">
+                        {/* 프로펠러 + 스피너 */}
+                        <ellipse cx="41" cy="76" rx="3.2" ry="19" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.1" />
+                        <path d="M53 69 Q43 72 43 76 Q43 80 53 83 Z" fill="#475569" />
+                        {/* 동체 포드 */}
+                        <path d="M53 66 Q72 56 100 55 L154 55 Q188 57 205 68 L205 84 Q188 93 154 94 L100 94 Q72 93 53 86 Q46 76 53 66 Z"
+                          fill="#ffffff" stroke="#334155" strokeWidth="2" />
+                        <ellipse cx="88" cy="66" rx="13" ry="6.5" fill="#bae6fd" stroke="#0284c7" strokeWidth="1.2" />
+                        {/* 배터리 */}
+                        <rect x="86" y="72" width="40" height="12" rx="3" fill="#f59e0b" stroke="#b45309" strokeWidth="1" />
+                        {/* 테일붐 + 미익 */}
+                        <path d="M203 71 L286 73.5 L286 78.5 L203 83 Z" fill="#ffffff" stroke="#334155" strokeWidth="1.7" />
+                        <path d="M271 73 L284 47 Q286 43 290 44 L297 46 L288 74 Z" fill="#f1f5f9" stroke="#334155" strokeWidth="1.6" />
+                        <rect x="268" y="70" width="54" height="6" rx="3" fill="#f1f5f9" stroke="#334155" strokeWidth="1.6" />
+                        {/* 주익 */}
+                        <rect x="114" y="45" width="98" height="11" rx="5.5" fill="#7dd3fc" stroke="#0369a1" strokeWidth="1.6" />
+                        <circle cx="170" cy="50" r="4.5" fill="#0f766e" stroke="#ffffff" strokeWidth="1.5" />
+                      </g>
+                      {/* CG 수직선 + 받침점 */}
+                      <line x1="182" y1="34" x2="182" y2="90" stroke="#0f766e" strokeWidth="1.8" strokeDasharray="4 4" />
+                      <text x="192" y="42" fontSize="11" fontWeight="800" fill="#0f766e">CG</text>
+                      <path d="M182 90 L166 116 L198 116 Z" fill="#0f766e" opacity="0.85" />
+                      <text x="206" y="112" fontSize="10.5" fontWeight="700" fill="#0f766e">권장 CG 받침점</text>
+                      {/* 배터리 이동 화살표 */}
+                      <line x1="86" y1="128" x2="168" y2="128" stroke="#b45309" strokeWidth="2.5"
+                        markerStart="url(#arrowTip)" markerEnd="url(#arrowTip)" />
+                      <text x="127" y="148" textAnchor="middle" fontSize="11" fontWeight="800" fill="#b45309">배터리를 앞뒤로 이동해 CG 조정</text>
                     </svg>
                   </div>
                 </div>
@@ -956,6 +988,17 @@ export default function App() {
   const [activeMode, setActiveMode] = useState("multicopter");
   const [fixedWingPresetId, setFixedWingPresetId] = useState("flightory-stork");
   const [fixedWingConfig, setFixedWingConfig] = useState(() => getFixedWingDefaultConfig("flightory-stork"));
+  const [fwMode, setFwMode] = useState("preset");
+  const [fwAero, setFwAero] = useState(INIT_FW_AERO);
+  const [fwPhoto, setFwPhoto] = useState(null);
+  const [fwLogCal, setFwLogCal] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return JSON.parse(window.localStorage.getItem(FW_LOG_CAL_KEY) || "null");
+    } catch {
+      return null;
+    }
+  });
   const [p, setP] = useState(INIT);
   const [batt, setBatt] = useState(INIT_BATT);
   const [esc, setEsc] = useState(INIT_ESC);
@@ -992,6 +1035,18 @@ export default function App() {
     ...prev,
     customBattery: { ...prev.customBattery, [k]: isNaN(v) ? prev.customBattery[k] : v }
   })), []);
+  const setFWA = useCallback((k, v) => setFwAero(prev => ({
+    ...prev,
+    [k]: typeof v === "string" ? v : isNaN(v) ? prev[k] : v
+  })), []);
+  const setFWABattery = useCallback((k, v) => setFwAero(prev => ({
+    ...prev,
+    customBattery: { ...prev.customBattery, [k]: isNaN(v) ? prev.customBattery[k] : v }
+  })), []);
+  const applyFwPhoto = useCallback(res => {
+    setFwPhoto(res);
+    setFwAero(prev => ({ ...prev, wingAreaM2: +res.areaM2.toFixed(4) }));
+  }, []);
 
   const battV = batt.cells * CELL_V;
   const battWh = battV * batt.mah / 1000;
@@ -1151,6 +1206,11 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(flightLogs));
   }, [flightLogs]);
+
+  useEffect(() => {
+    if (fwLogCal) window.localStorage.setItem(FW_LOG_CAL_KEY, JSON.stringify(fwLogCal));
+    else window.localStorage.removeItem(FW_LOG_CAL_KEY);
+  }, [fwLogCal]);
 
   useEffect(() => {
     const currentIcon = document.querySelector("link[rel~='icon']");
@@ -1330,12 +1390,19 @@ export default function App() {
       selectedCombo ? `${selectedCombo.maker} 추력표` : directSpecCalc ? "50% 스펙 기준" : "직접 입력 추력"
     ]
     : activeMode === "fixedwing"
-      ? [
-        `${fixedWingPreset.maker} ${fixedWingPreset.name}`,
-        selectedFixedWingPowertrain.shortLabel,
-        `${selectedFixedWingBattery.cells}S ${selectedFixedWingBattery.mah.toLocaleString()}mAh`,
-        `추천 ${fixedWingCalc.cruiseKmh.toFixed(0)}km/h · ${fixedWingCalc.enduranceMin.toFixed(0)}분`
-      ]
+      ? fwMode === "preset"
+        ? [
+          `${fixedWingPreset.maker} ${fixedWingPreset.name}`,
+          selectedFixedWingPowertrain.shortLabel,
+          `${selectedFixedWingBattery.cells}S ${selectedFixedWingBattery.mah.toLocaleString()}mAh`,
+          `추천 ${fixedWingCalc.cruiseKmh.toFixed(0)}km/h · ${fixedWingCalc.enduranceMin.toFixed(0)}분`
+        ]
+        : [
+          fwMode === "photo" ? "사진 측정 모드" : "커스텀 모드",
+          `윙스팬 ${fwAero.wingspanMm.toFixed(0)}mm`,
+          `주익 ${fwAero.wingAreaM2.toFixed(3)}m²`,
+          `AUW ${fwAero.towKg.toFixed(2)}kg`
+        ]
       : [activeModeMeta.badge, "기획 중", activeModeMeta.subtitle];
 
   return (
@@ -1976,6 +2043,15 @@ export default function App() {
           onBatteryChange={applyFixedWingBattery}
           onConfigChange={setFW}
           onCustomBatteryChange={setFWBattery}
+          fwMode={fwMode}
+          onFwModeChange={setFwMode}
+          aero={fwAero}
+          onAeroChange={setFWA}
+          onAeroBatteryChange={setFWABattery}
+          photo={fwPhoto}
+          onPhotoApply={applyFwPhoto}
+          logCal={fwLogCal}
+          onLogCalChange={setFwLogCal}
         />
       ) : (
         <ComingSoonPanel
