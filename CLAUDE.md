@@ -22,8 +22,10 @@
   - `flightlog.js` — 포맷 자동감지 + 공용 순항 분석 (순항 판정: 수평속도>8m/s, |vz|<1.2m/s)
   - `LogCalibration.jsx` — 로그 업로드/요약/보정 토글 UI
   - `telemetry.js` + `ShareSummary.jsx` — opt-in 익명 요약 공유 (Supabase, env 없으면 자동 비활성)
+- [src/vtol/VtolPanel.jsx](src/vtol/VtolPanel.jsx) — VTOL 미션 빌더. 호버 전력은 멀티콥터 탭 계산, 순항 모델은 고정익 탭(fwAero) 상태를 그대로 재사용 (탭 간 연동이 의도된 설계)
 - [supabase/schema.sql](supabase/schema.sql) — 수집 테이블 (RLS: anon INSERT만, 쓰기 전용 우편함)
 - [docs/BACKEND_SETUP.md](docs/BACKEND_SETUP.md) — Supabase 연동 절차
+- LICENSE(Apache-2.0) + NOTICE(로고는 상표로 제외) — 라이선스 관련 답변 시 참조
 
 ## 핵심 설계 결정 (바꾸기 전에 이유 확인)
 

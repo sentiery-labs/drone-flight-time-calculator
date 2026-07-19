@@ -9,6 +9,19 @@ import PhotoWingMeasure from "./PhotoWingMeasure";
 import LogCalibration from "./LogCalibration";
 import ShareSummary from "./ShareSummary";
 
+const EnduranceTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8,
+      padding: "8px 12px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: 12 }}>
+      <div style={{ fontWeight: 600 }}>속도 {label} m/s ({d?.kmh?.toFixed(0)} km/h)</div>
+      <div style={{ color: "#2563eb" }}>항속시간 {d?.enduranceMin?.toFixed(0)} 분</div>
+      <div style={{ color: "#64748b" }}>필요전력 {d?.powerW?.toFixed(0)} W · L/D {d?.ld?.toFixed(1)}</div>
+    </div>
+  );
+};
+
 const PowerTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
@@ -325,6 +338,51 @@ export default function FixedWingAeroPanel({ variant, aero, onAeroChange, onAero
                 <span>최대체공: 필요전력 최소 속도 (가장 오래 떠 있음)</span>
                 <span>최대항속: km당 소모 최소 속도 (가장 멀리 감)</span>
                 <span>빨간 실속선보다 왼쪽은 비행 불가</span>
+              </div>
+            </div>
+
+            <div className="result-overview fixedwing-result-panel" style={{ padding: "12px 14px" }}>
+              <div className="fixedwing-card-title">
+                <span>속도별 항속시간</span>
+                <strong>얼마나 빨리 날면 얼마나 오래 나는가</strong>
+              </div>
+              <div className="chart-legend">
+                <span>
+                  <i style={{ background: "#2563eb" }} />
+                  최대 체공점 {calcResult.endurance.speedMs.toFixed(1)} m/s · {calcResult.endurance.minutes.toFixed(0)}분
+                </span>
+                <span>
+                  <i style={{ background: "#7c3aed" }} />
+                  (L/D)max {calcResult.maxLd.toFixed(1)} @ {calcResult.maxLdSpeedMs.toFixed(1)} m/s
+                </span>
+              </div>
+              <div style={{ width: "100%", height: 220 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={calcResult.curve} margin={{ top: 12, right: 18, bottom: 4, left: 0 }}>
+                    <defs>
+                      <linearGradient id="enduranceFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity={0.26} />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="ms" tick={{ fontSize: 11 }} unit=" m/s" tickCount={8}
+                      type="number" domain={[Math.floor(calcResult.vStallMs - 0.5), "dataMax"]} allowDataOverflow />
+                    <YAxis tick={{ fontSize: 11 }} unit=" 분" width={58} />
+                    <Tooltip content={<EnduranceTooltip />} />
+                    <ReferenceLine x={+calcResult.vStallMs.toFixed(2)} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.6} />
+                    <Area type="monotone" dataKey="enduranceMin" stroke="#2563eb" strokeWidth={2.4} fill="url(#enduranceFill)" />
+                    <ReferenceDot x={+calcResult.endurance.speedMs.toFixed(2)} y={+calcResult.endurance.minutes.toFixed(1)}
+                      r={5} fill="#2563eb" stroke="#ffffff" strokeWidth={2} />
+                    <ReferenceDot x={+calcResult.maxLdSpeedMs.toFixed(2)}
+                      y={+(calcResult.curve.find(p => Math.abs(p.ms - calcResult.maxLdSpeedMs) < 0.06)?.enduranceMin ?? 0).toFixed(1)}
+                      r={5} fill="#7c3aed" stroke="#ffffff" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="fixedwing-formula-strip">
+                <span>예비 {aero.reservePct.toFixed(0)}% 제외한 가용 에너지 기준</span>
+                <span>(L/D)max 속도는 활공비 최적 = 무동력 활공 시 가장 멀리 가는 속도</span>
               </div>
             </div>
           </>

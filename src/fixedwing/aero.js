@@ -127,6 +127,7 @@ export function calcFixedWingAero(input) {
   let bestEnd = null;
   let bestRange = null;
   let maxLd = 0;
+  let maxLdV = 0;
 
   for (let v = vMin; v <= vMax; v += 0.1) {
     const q = 0.5 * RHO * v * v * wingAreaM2;
@@ -135,11 +136,17 @@ export function calcFixedWingAero(input) {
     const dragN = q * cd;
     const elecW = ((dragN * v) / propEff) * calFactor + avionicsW;
     const ld = cl / cd;
-    if (ld > maxLd) maxLd = ld;
+    if (ld > maxLd) { maxLd = ld; maxLdV = v; }
     if (!bestEnd || elecW < bestEnd.powerW) bestEnd = { v, powerW: elecW, cl, ld };
     const whPerKm = elecW / (v * 3.6);
     if (!bestRange || whPerKm < bestRange.whPerKm) bestRange = { v, powerW: elecW, whPerKm, cl, ld };
-    curve.push({ ms: +v.toFixed(2), kmh: +(v * 3.6).toFixed(1), powerW: +elecW.toFixed(1), ld: +ld.toFixed(2) });
+    curve.push({
+      ms: +v.toFixed(2),
+      kmh: +(v * 3.6).toFixed(1),
+      powerW: +elecW.toFixed(1),
+      enduranceMin: elecW > 0 ? +((usableWh / elecW) * 60).toFixed(1) : 0,
+      ld: +ld.toFixed(2)
+    });
   }
 
   if (!bestEnd || !bestRange) return null;
@@ -158,6 +165,7 @@ export function calcFixedWingAero(input) {
     wingLoadingKgM2,
     weightN,
     maxLd,
+    maxLdSpeedMs: maxLdV,
     voltage,
     batteryWh,
     usableWh,

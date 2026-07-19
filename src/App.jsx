@@ -28,6 +28,7 @@ import { getComboLabel, interpolateByThrust, loadMotorPresetCsv } from "./data/m
 import { BigNum, InputRow, LEVEL_META, Sec, SmallCard, STATUS } from "./components/ui";
 import { FIXED_WING_BATTERY_PRESETS } from "./fixedwing/aero";
 import FixedWingAeroPanel from "./fixedwing/FixedWingAeroPanel";
+import VtolPanel from "./vtol/VtolPanel";
 import sentieryIcon from "../sentiery-icon.png";
 import sentieryLogoEn from "../sentiery-logo-en.png";
 import sentieryMark from "../sentiery-mark.png";
@@ -65,6 +66,15 @@ const INIT_FW_AERO = {
   reservePct: 15,
   batteryId: "4s-10000-liion",
   customBattery: { cells: 4, mah: 10000, kg: 0.7, cRate: 10 }
+};
+
+const INIT_VTOL = {
+  hoverMin: 2,
+  transitionSec: 40,
+  missionKm: 20,
+  speedMode: "range",
+  customSpeedMs: 15,
+  hoverOverrideW: 0
 };
 
 const FW_SUB_MODES = [
@@ -118,7 +128,7 @@ const VEHICLE_MODE_META = {
   vtol: {
     id: "vtol",
     label: "VTOL",
-    badge: "업데이트 예정",
+    badge: "베타 계산",
     title: "VTOL 임무시간 추정기",
     subtitle: "수직이착륙 · 전환비행 · 순항 구간 통합",
     Icon: Zap,
@@ -441,102 +451,6 @@ const BarTooltip = ({ active, payload }) => {
       <div>비행시간: <b>{d?.time?.toFixed(1)} 분</b></div>
       <div>이륙중량: {d?.tow?.toFixed(2)} kg</div>
       <div>총 소비전력: {d?.power?.toFixed(0)} W</div>
-    </div>
-  );
-};
-
-const ComingSoonPanel = ({ mode, fixedWingPreset, onFixedWingPresetChange }) => {
-  const ModeIcon = mode.Icon || Info;
-  const showFixedWingPreset = mode.id === "fixedwing" && fixedWingPreset;
-  return (
-    <div className="coming-soon-shell">
-      <section className="coming-soon-hero">
-        <div className="coming-soon-icon">
-          <ModeIcon size={24} strokeWidth={2.3} />
-        </div>
-        <div>
-          <div className="coming-soon-kicker">{mode.badge}</div>
-          <h2>{mode.title}</h2>
-          <p>{mode.focus}</p>
-        </div>
-      </section>
-
-      {showFixedWingPreset && (
-        <section className="fixedwing-preset-card">
-          <div className="fixedwing-preset-head">
-            <div>
-              <div className="coming-soon-kicker">대표 3D 프린터 기체 프리셋</div>
-              <h3>Flightory 기준 기체 제원</h3>
-              <p>공개 웹페이지 제원을 기반으로 시작하고, 주익 면적은 다음 단계에서 사진 + 윙스팬으로 추정합니다.</p>
-            </div>
-            <select value={fixedWingPreset.id} onChange={e => onFixedWingPresetChange(e.target.value)}>
-              {FIXED_WING_PRESETS.map(preset => (
-                <option key={preset.id} value={preset.id}>{preset.maker} {preset.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="fixedwing-preset-main">
-            <div className="fixedwing-preset-summary">
-              <span>{fixedWingPreset.maker}</span>
-              <strong>{fixedWingPreset.name}</strong>
-              <p>{fixedWingPreset.summary}</p>
-              <a href={fixedWingPreset.sourceUrl} target="_blank" rel="noreferrer">
-                공식 페이지
-                <ExternalLink size={12} />
-              </a>
-            </div>
-            <div className="fixedwing-spec-grid">
-              {[
-                ["윙스팬", `${(fixedWingPreset.wingspanM * 1000).toFixed(0)} mm`],
-                ["전장", `${(fixedWingPreset.lengthM * 1000).toFixed(0)} mm`],
-                ["중량(AUW)", `${fixedWingPreset.auwMinKg.toFixed(1)}-${fixedWingPreset.auwMaxKg.toFixed(1)} kg`],
-                ["권장 속도", `${fixedWingPreset.speedMinKmh}-${fixedWingPreset.speedMaxKmh} km/h`],
-                ["익형", fixedWingPreset.airfoil],
-                ["주익 면적", "사진 기반 추정 예정"],
-                ["형상", fixedWingPreset.type],
-                ["재질", fixedWingPreset.material]
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="fixedwing-next-row">
-            <span>추진계</span>
-            <strong>{fixedWingPreset.propulsion}</strong>
-          </div>
-        </section>
-      )}
-
-      <div className="coming-soon-grid">
-        <section className="coming-soon-card">
-          <h3>개발 예정 기능</h3>
-          <div className="coming-soon-list">
-            {mode.items.map(item => (
-              <div key={item}>
-                <Check size={14} strokeWidth={2.5} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="coming-soon-card">
-          <h3>진행 방향</h3>
-          <div className="coming-soon-notes">
-            {mode.notes.map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
     </div>
   );
 };
@@ -999,6 +913,7 @@ export default function App() {
       return null;
     }
   });
+  const [vtolConfig, setVtolConfig] = useState(INIT_VTOL);
   const [p, setP] = useState(INIT);
   const [batt, setBatt] = useState(INIT_BATT);
   const [esc, setEsc] = useState(INIT_ESC);
@@ -1047,6 +962,10 @@ export default function App() {
     setFwPhoto(res);
     setFwAero(prev => ({ ...prev, wingAreaM2: +res.areaM2.toFixed(4) }));
   }, []);
+  const setVT = useCallback((k, v) => setVtolConfig(prev => ({
+    ...prev,
+    [k]: typeof v === "string" ? v : isNaN(v) ? prev[k] : v
+  })), []);
 
   const battV = batt.cells * CELL_V;
   const battWh = battV * batt.mah / 1000;
@@ -1382,6 +1301,10 @@ export default function App() {
     () => calcFixedWing(fixedWingPreset, selectedFixedWingPowertrain, selectedFixedWingProp, selectedFixedWingBattery, fixedWingConfig),
     [fixedWingPreset, selectedFixedWingPowertrain, selectedFixedWingProp, selectedFixedWingBattery, fixedWingConfig]
   );
+  const vtolHoverPowerW = motorCalc?.totalPowerW || r.tW;
+  const vtolHoverSourceLabel = motorCalc
+    ? (selectedCombo ? "멀티콥터 탭 · 추력표 기준" : "멀티콥터 탭 · 50% 스펙 기준")
+    : "멀티콥터 탭 · 모멘텀 이론";
   const headerChips = isMulticopterMode
     ? [
       currentPresetName,
@@ -1403,7 +1326,12 @@ export default function App() {
           `주익 ${fwAero.wingAreaM2.toFixed(3)}m²`,
           `AUW ${fwAero.towKg.toFixed(2)}kg`
         ]
-      : [activeModeMeta.badge, "기획 중", activeModeMeta.subtitle];
+      : [
+        "미션 빌더",
+        `호버 ${vtolHoverPowerW.toFixed(0)}W`,
+        `순항 ${vtolConfig.missionKm.toFixed(0)}km 목표`,
+        `${fwAero.towKg.toFixed(2)}kg 기준`
+      ];
 
   return (
     <div className="app-root" style={{ fontFamily: "'Inter',-apple-system,system-ui,sans-serif", background: "linear-gradient(180deg,#eef7f8 0%,#f8fafc 34%,#eef2f7 100%)", minHeight: "100vh" }}>
@@ -2054,10 +1982,14 @@ export default function App() {
           onLogCalChange={setFwLogCal}
         />
       ) : (
-        <ComingSoonPanel
+        <VtolPanel
           mode={activeModeMeta}
-          fixedWingPreset={fixedWingPreset}
-          onFixedWingPresetChange={setFixedWingPresetId}
+          aero={fwAero}
+          logCal={fwLogCal}
+          hoverPowerW={vtolHoverPowerW}
+          hoverSourceLabel={vtolHoverSourceLabel}
+          config={vtolConfig}
+          onConfigChange={setVT}
         />
       )}
       <footer className="app-footer">
