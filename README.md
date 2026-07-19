@@ -1,11 +1,15 @@
-# Multicopter Flight Time Calculator
+# Sentiery UAV Flight Time Calculator
 
-멀티콥터 드론의 기체 중량, 배터리, 모터/프로펠러, ESC, 임무장비 조건을 바탕으로 호버링 비행시간을 추정하는 React 웹앱입니다.
+멀티콥터·고정익·VTOL 기체의 비행시간을 추정하는 React 웹앱입니다.
+기체 제원과 배터리 구성으로 1차 추정하고, 실측 비행 로그(PX4 .ulg / ArduPilot .bin)로 보정합니다.
 
-사이트: https://gnc-chlee.github.io/drone-flight-time-calculator/
+> **배포 주소**: `main` 브랜치에 push하면 GitHub Actions가 GitHub Pages로 자동 배포합니다.
+> 현재 주소는 저장소 상단 About 링크 또는 Settings > Pages에서 확인하세요.
+> (저장소 조직 이전 시 주소가 바뀌므로 이 문서에는 고정 URL을 적지 않습니다.)
 
 ## 주요 기능
 
+### 멀티콥터
 - 기체 중량, 로터 수, 배터리 용량, 페이로드 기반 비행시간 추정
 - CSV 기반 모터/프로펠러 추력표 프리셋
 - 제조사 추력표 기반 throttle, current, power 선형 보간
@@ -16,6 +20,14 @@
 - 임무장비별 무게/소비전력 추가 및 누적 비교
 - 실측 비행 로그 기반 보정계수 적용
 - 페이로드 증가에 따른 비행시간 곡선 시각화
+
+### 고정익 (프리셋 · 사진 측정 · 커스텀)
+- 제조사 프리셋(Flightory Stork/Stallion) 기반 1차 추정
+- Top view 사진 + 실측 윙스팬으로 주익 면적/AR 측정 (캔버스 트레이싱)
+- 항력 모델(CD = CD0 + CL²/π·e·AR) 기반 속도별 필요전력·항속시간 계산
+- 기체 형상/프로펠러 스타일 선택으로 공력 계수 자동 매핑 (전문가 직접 입력도 지원)
+- PX4 .ulg / ArduPilot .bin 로그 업로드 → 순항 구간 자동 검출 → 모델 보정
+- opt-in 익명 비행 요약 공유 (로그 원본·GPS·비행 시각은 전송하지 않음, [docs/BACKEND_SETUP.md](docs/BACKEND_SETUP.md))
 
 ## 계산 방식
 
@@ -89,4 +101,7 @@ docs/motor-csv-guide.md
 
 ## 라이선스
 
-MIT License
+[Apache License 2.0](LICENSE) — Copyright 2026 Sentiery
+
+단, Sentiery 명칭과 로고 이미지는 상표로서 라이선스 대상에서 제외됩니다.
+자세한 내용은 [NOTICE](NOTICE)를 참고하세요.
