@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "motorFiles": ["motor-presets.csv", "sunnysky-motors.csv"],
+  "comboMetadata": {
+    "holybro-air2216ii-kv920-4s-t1045ii": {
+      "propMaker": "Holybro",
+      "makerLabel": "Holybro (키트)"
+    },
+    "tmotor-u3-kv700-4s-12x4": { "propMaker": "T-MOTOR" },
+    "tmotor-u3-kv700-4s-13x44": { "propMaker": "T-MOTOR" },
+    "tmotor-u5-kv400-6s-15x5": { "propMaker": "T-MOTOR" },
+    "tmotor-u5-kv400-6s-16x54": { "propMaker": "T-MOTOR" },
+    "tmotor-mn5008-kv400-6s-p16x54": { "propMaker": "T-MOTOR" },
+    "sunnysky-v2806-kv400-6s-cn11x45": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 180, "recommendedEscA": 20 },
+    "sunnysky-v2806-kv400-6s-cn12x5": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 180, "recommendedEscA": 20 },
+    "sunnysky-v2806-kv650-4s-cn11x45": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 180, "recommendedEscA": "20–30" },
+    "sunnysky-v2806-kv650-4s-cn12x5": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 180, "recommendedEscA": "20–30" },
+    "sunnysky-v3508-kv580-4s-cn11x45": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 30, "recommendedEscA": 30 },
+    "sunnysky-v3508-kv580-4s-cn12x5": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 30, "recommendedEscA": 30 },
+    "sunnysky-v3508-kv700-4s-cn11x45": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 30, "recommendedEscA": 40 },
+    "sunnysky-v3508-kv700-4s-cn12x5": { "propMaker": "EOLO", "throttleAvailable": false, "currentLimitSeconds": 30, "recommendedEscA": 40 }
+  },
+  "escs": [
+    {
+      "id": "holybro-x500v2-blheli-s-20a",
+      "maker": "Holybro",
+      "model": "X500 V2 BLHeli S 20A",
+      "weightG": null,
+      "continuousA": 20,
+      "peakA": null,
+      "cellMin": 4,
+      "cellMax": 4,
+      "sourceUrl": "https://docs.holybro.com/drone-development-kit/px4-development-kit-x500v2",
+      "note": "X500 V2 키트의 4S 호환 확인. 무게·순간 전류 미확인."
+    },
+    {
+      "id": "tmotor-air20a-3-4s",
+      "maker": "T-MOTOR",
+      "model": "AIR 20A 3–4S",
+      "weightG": 21,
+      "continuousA": 20,
+      "peakA": 30,
+      "peakSeconds": 10,
+      "cellMin": 3,
+      "cellMax": 4,
+      "sourceUrl": "https://store.tmotor.com/product/air-gear-450II-combo-set.html",
+      "note": "제조사 배선 포함 무게. 추가 배선 무게는 별도 실측."
+    },
+    {
+      "id": "tmotor-air40a-2-6s",
+      "maker": "T-MOTOR",
+      "model": "AIR 40A 2–6S",
+      "weightG": null,
+      "continuousA": 40,
+      "peakA": 60,
+      "cellMin": 2,
+      "cellMax": 6,
+      "sourceUrl": "https://uav-en.tmotor.com/Multirotor/ESC/air/",
+      "note": "정격·지원 셀 확인. 무게는 별도 실측 입력."
+    }
+  ]
+}

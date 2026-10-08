@@ -38,6 +38,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      - name: Test calculations and catalog
+        run: npm test
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

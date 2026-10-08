@@ -12,6 +12,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.calculator-return {
+  padding: 10px 20px;
+  background: #fff;
+  font: 14px 'Segoe UI', 'Malgun Gothic', sans-serif;
+}
+
+.calculator-return a {
+  color: #087f75;
+  text-decoration: none;
+}
+
+.calculator-return a:hover {
+  text-decoration: underline;
+}
+
 button,
 input,
 select {
