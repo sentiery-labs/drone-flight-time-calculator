@@ -1,5 +1,6 @@
 import { calcFixedWingAero } from '../fixedwing/aero.js';
 import { interpolateCatalogByThrust } from './catalog.js';
+import { summarizeWeight } from './weight.js';
 
 export const INITIAL = { aircraft: 'x500', airframeKg: .96, rotors: 4, motorKg: .064, propKg: .0125, escKg: .021,
   motorMethod: 'catalog', directCells: 4, escId: '', escMin: 3, escMax: 4, escPeakA: 30,
@@ -19,8 +20,9 @@ export function estimate(mode, p, combos, weightMode, payload = p.payloadKg) {
   if (mode === 'vtol') required.push(p.hoverMin, p.transitionSec, p.missionKm);
   if (required.some(v => v === '' || !Number.isFinite(v) || v < 0) || p.cells < 1 || p.mah <= 0 || p.reserve > 60 || p.cRate <= 0) return null;
   if (p.escMin > p.escMax || p.rotors % 1 || p.cells % 1 || p.escA <= 0) return null;
-  const weight = weightMode === 'total' ? p.totalKg : p.airframeKg + p.rotors * (p.motorKg + p.propKg + p.escKg) + p.batteryKg + payload;
-  if (!(weight > 0)) return null;
+  const weightSummary = summarizeWeight(p, weightMode, payload);
+  if (!weightSummary) return null;
+  const weight = weightSummary.totalKg;
   const voltage = p.cells * 3.7;
   const wh = voltage * p.mah / 1000;
   const usable = wh * (1 - p.reserve / 100);

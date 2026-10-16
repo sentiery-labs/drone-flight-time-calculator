@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test src/student/catalog.test.mjs src/student/estimate.test.mjs",
+    "test": "node --test src/student/catalog.test.mjs src/student/estimate.test.mjs src/student/weight.test.mjs src/student/thrustCurve.test.mjs src/student/batteryComparison.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

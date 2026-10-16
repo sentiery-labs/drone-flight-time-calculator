@@ -8,6 +8,9 @@ import PhotoWingMeasure from '../fixedwing/PhotoWingMeasure.jsx';
 import catalog from './parts-catalog.json';
 import { buildMotorCatalog, comboSettings, compatibleCombos, escSettings, loadCatalogCombos, motorKey, propKey, unique } from './catalog.js';
 import { estimate, INITIAL } from './estimate.js';
+import WeightOverview from './WeightOverview.jsx';
+import ThrustPowerChart from './ThrustPowerChart.jsx';
+import BatteryComparison from './BatteryComparison.jsx';
 import logo from '../../sentiery-logo-en.png';
 import './student.css';
 
@@ -151,6 +154,7 @@ export default function StudentCalculator() {
   const [combos, setCombos] = useState([]);
   const [catalogError, setCatalogError] = useState(false);
   const [baseline, setBaseline] = useState(null);
+  const [batteryCandidates, setBatteryCandidates] = useState(null);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
   const [log, setLog] = useState(null);
@@ -236,7 +240,7 @@ export default function StudentCalculator() {
     <header className="app-header"><div className="header-inner"><div className="brand"><img src={logo} alt="Sentiery" /><span className="brand-divider" /><h1>비행시간 계산기</h1></div>
       <div className="header-tools"><IconButton label="비교 기준으로 저장" onClick={saveBaseline} disabled={!result?.supported}><Save size={19} /></IconButton>
         <IconButton label="설정 내보내기" onClick={exportSettings}><ArrowDownToLine size={19} /></IconButton>
-        <IconButton label="현재 입력 초기화" onClick={() => { setP(INITIAL); setMode('multicopter'); setWeightMode('parts'); setSource('preset'); setPhoto(null); setToast('기본 기체로 초기화했어요'); }}><RotateCcw size={19} /></IconButton>
+        <IconButton label="현재 입력 초기화" onClick={() => { setP(INITIAL); setBatteryCandidates(null); setMode('multicopter'); setWeightMode('parts'); setSource('preset'); setPhoto(null); setToast('기본 기체로 초기화했어요'); }}><RotateCcw size={19} /></IconButton>
         <IconButton label="계산 용어" onClick={() => setModal('help')}><CircleHelp size={19} /></IconButton></div></div></header>
     <nav className="aircraft-nav" aria-label="기체 유형"><div className="nav-inner" role="tablist">{MODES.map(([key, label, Icon]) => <button key={key} role="tab" aria-selected={mode === key} className={mode === key ? 'active' : ''} onClick={() => changeMode(key)}><Icon size={18} /><span>{label}</span>{key === 'vtol' && <small>베타</small>}</button>)}</div></nav>
     <main className="workspace"><div className="workspace-heading"><div><div className="eyebrow">{MODES.find(m => m[0] === mode)?.[1]}</div><h2>{aircraftName}</h2></div>
@@ -256,6 +260,7 @@ export default function StudentCalculator() {
         <div id="esc"><Section title="ESC" icon={Cpu} step="3"><EscFields p={p} setP={setP} field={field} detail={detail} /></Section></div>
         <div id="battery"><Section title="배터리" icon={Battery} step="4"><div className="field-grid">{field('셀 수', 'cells', 'S', { min: 1, max: 14, step: 1 })}{field('용량', 'mah', 'mAh', { min: 100, max: 100000, step: 100 })}{field('배터리 무게', 'batteryKg', 'kg', { max: 10 })}{field('남겨둘 잔량', 'reserve', '%', { max: 60, step: 1 })}</div>
           <div className="energy-line"><span>배터리 에너지</span><strong>{fmt(batteryWh)} <small>Wh</small></strong></div>
+          {mode === 'multicopter' && <button className="text-action" onClick={() => setWork('compare')}><Battery size={16} />배터리 후보 비교<ArrowRight size={15} /></button>}
         </Section></div>
         <Section title="추가 탑재물" icon={Plus} step="5"><div className="field-grid">{field('추가 무게', 'payloadKg', 'kg', { max: 10 })}{field('장비 소비전력', 'payloadW', 'W', { max: 500, step: 1 })}</div></Section>
         {mode === 'vtol' && <Section title="임무 구간" icon={Plane} step="6"><div className="field-grid">{field('이착륙 호버 합계', 'hoverMin', '분', { max: 20, step: .1 })}{field('전환 시간 합계', 'transitionSec', '초', { max: 300, step: 1 })}{field('순항 거리', 'missionKm', 'km', { max: 500, step: 1 })}</div></Section>}
@@ -266,10 +271,15 @@ export default function StudentCalculator() {
           <div className="result-assumptions"><Battery size={15} /><span>배터리 잔량 {p.reserve || 0}% 제외</span><span className="dot-separator">·</span><span>{mode === 'multicopter' ? '호버링 기준' : '수평 순항 가정'}</span></div></div>
         <div className="secondary-results"><div><span><Scale size={16} />전체 무게</span><strong>{fmt(result?.weight, 2)}<small>kg</small></strong></div><div><span><Zap size={16} />소비전력</span><strong>{fmt(result?.power, 0)}<small>W</small></strong></div><div><span>{mode === 'multicopter' ? <SlidersHorizontal size={16} /> : <Plane size={16} />}{mode === 'multicopter' ? '호버 스로틀' : '계산 대기속도'}</span><strong>{mode === 'multicopter' ? fmt(result?.throttle, 0) : fmt(result?.fw?.endurance.speedKmh, 0)}<small>{mode === 'multicopter' ? (combo?.throttleAvailable === false ? '자료 없음' : '%') : 'km/h'}</small></strong></div></div>
         <div className={`configuration-status ${issue ? issue[0] : 'neutral'}`}>{issue ? <TriangleAlert size={20} /> : <Check size={20} />}<div><strong>{issue?.[1] || '검토 항목에서 충돌이 발견되지 않았어요'}</strong><span>{issue?.[2] || '실제 비행 검증 전 추정값'}</span></div>{issue && <IconButton label="관련 입력으로 이동" onClick={() => focusInput(issue[3])}><ArrowRight size={18} /></IconButton>}</div>
+        {mode === 'multicopter' && <WeightOverview settings={p} weightMode={weightMode} />}
+        {mode === 'multicopter' && <ThrustPowerChart settings={p} combos={combos} weightMode={weightMode} result={result} />}
         <section className="chart-section"><div className="chart-heading"><div><h3>{mode === 'multicopter' ? '탑재물과 비행시간' : '대기속도와 체공시간'}</h3><span>{mode === 'multicopter' ? '현재 구성에 무게만 추가' : '동일한 기체·배터리 조건'}</span></div><div className="chart-legend"><span />예상 시간</div></div><div className="chart-box">{curve.length > 0 && <ResponsiveContainer width="100%" height="100%"><AreaChart data={curve} margin={{ top: 16, right: 14, bottom: 10, left: 0 }}><CartesianGrid vertical={false} stroke="#e9edf1" strokeDasharray="3 4" /><XAxis dataKey="x" type="number" tick={{ fill: '#56616e', fontSize: 13 }} axisLine={false} tickLine={false} minTickGap={30} /><YAxis tick={{ fill: '#56616e', fontSize: 13 }} axisLine={false} tickLine={false} width={38} /><Tooltip formatter={value => [`${fmt(value)} 분`, '예상 시간']} labelFormatter={value => `${fmt(Number(value))} ${mode === 'multicopter' ? 'kg 추가' : 'km/h'}`} contentStyle={{ borderRadius: 6, borderColor: '#dde2e7', fontSize: 14 }} /><Area dataKey="time" type="monotone" stroke="#356ae6" fill="#eef3fe" strokeWidth={2.5} isAnimationActive={false} connectNulls={false} />{mode === 'multicopter' && result?.supported && <ReferenceDot x={0} y={result.minutes} r={4} fill="#356ae6" stroke="white" strokeWidth={2} />}</AreaChart></ResponsiveContainer>}</div><div className="chart-axis-labels"><span>시간 (분)</span><span>{mode === 'multicopter' ? '추가 탑재물 무게 (kg)' : '대기속도 (km/h)'}</span></div></section>
         <details className="calculation-details"><summary><Info size={17} /><span>계산 근거와 상세 결과</span><ChevronDown size={17} /></summary><div className="details-content"><dl><div><dt>배터리 전압</dt><dd>{fmt(result?.voltage)} V</dd></div><div><dt>사용 에너지</dt><dd>{fmt(result?.usable)} Wh</dd></div><div><dt>배터리 전류</dt><dd>{fmt(result?.batteryA)} A</dd></div><div><dt>배터리 방전부하</dt><dd>{fmt(result?.batteryLoad, 0)}%</dd></div></dl><p>예상 시간 = 사용 에너지 ÷ 소비전력 × 60</p>{result?.fw && <p>공력 가정: CD₀ {p.cd0}, e {p.oswald}, 추진 효율 {p.propEff} · 주익 {p.wingArea} m²</p>}</div></details>
         <div className="compare-shortcut"><span>현재 구성</span><button className="text-action" disabled={!result?.supported} onClick={() => { saveBaseline(); setWork('compare'); }}><Save size={16} />비교 기준으로 저장<ArrowRight size={16} /></button></div>
-      </section></div> : work === 'compare' ? <section className="wide-view"><div className="view-title"><div><span className="eyebrow">조건 비교</span><h2>변경 전후 한눈에 보기</h2></div><button className="outline-button" onClick={saveBaseline} disabled={!result?.supported}><Save size={17} />기준안 저장</button></div>{baseline && baseline.mode === mode ? <>
+      </section></div> : work === 'compare' ? <section className="wide-view">
+        {mode === 'multicopter' && <BatteryComparison settings={p} combos={combos} weightMode={weightMode} candidates={batteryCandidates} setCandidates={setBatteryCandidates}
+          field={field} NumberField={NumberField} IconButton={IconButton} onApply={row => { setP(row.settings); setWork('calculate'); setToast(`${row.candidate.name || '배터리 후보'} 적용했어요`); }} />}
+        <div className="view-title"><div><span className="eyebrow">조건 비교</span><h2>변경 전후 한눈에 보기</h2></div><button className="outline-button" onClick={saveBaseline} disabled={!result?.supported}><Save size={17} />기준안 저장</button></div>{baseline && baseline.mode === mode ? <>
         {!comparisonResult && <p className="field-error">현재 구성의 입력값·시험 조건 확인 필요</p>}
         <div className="comparison-table"><div className="comparison-row comparison-head"><span>항목</span><span>기준안</span><span>현재 구성</span><span>변화</span></div>
           {[['예상 시간', 'minutes', '분', 1], ['전체 무게', 'weight', 'kg', 2], ['소비전력', 'power', 'W', 0]].map(([name, key, unit, digits]) => <div className="comparison-row" key={key}>
